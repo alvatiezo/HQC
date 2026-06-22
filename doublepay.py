@@ -1,50 +1,69 @@
 import streamlit as st
 import pandas as pd
+import plotly.express as px
+from io import BytesIO
 
-def mostrar_master_dashboard(archivo):
-    st.header("📈 Executive Master Dashboard")
+def mostrar_dashboard_doublepay(archivo_subido):
+    st.header("💵 Double Pay Dashboard")
     
-    # 1. Procesar Bonos
-    df_bonus = pd.read_excel(archivo, sheet_name="Bonus")
-    df_bonus = df_bonus[df_bonus["Status"].astype(str).str.lower() == "yes"]
-    total_bonus = df_bonus["Amount"].sum()
-    
-    # 2. Procesar OT
-    df_ot = pd.read_excel(archivo, sheet_name="OT")
-    df_ot["Var"] = df_ot["Var"].astype(str).str.replace(',', '.').astype(float)
-    df_ot["Total OT"] = df_ot["Hours"] * df_ot["Rate"] * df_ot["Var"]
-    total_ot_pay = df_ot["Total OT"].sum()
-    total_ot_hours = df_ot["Hours"].sum()
-    
-    # 3. Procesar Double Pay
-    df_dp = pd.read_excel(archivo, sheet_name="Double Pay")
-    df_dp["Total DP"] = df_dp["Hours"] * df_dp["Rate"]
-    total_dp_pay = df_dp["Total DP"].sum()
-    total_dp_hours = df_dp["Hours"].sum()
-
-    # --- RENDERIZADO DE KPIs ---
-    st.subheader("Financial Summary")
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Total Bonus Paid", f"${total_bonus:,.2f}")
-    c2.metric("Total OT Paid", f"${total_ot_pay:,.2f}")
-    c3.metric("Total Double Pay", f"${total_dp_pay:,.2f}")
-    
-    c4, c5 = st.columns(2)
-    c4.metric("Total OT Hours", f"{total_ot_hours:,.2f} hrs")
-    c5.metric("Total DP Hours", f"{total_dp_hours:,.2f} hrs")
-
-    # --- RENDERIZADO DE DETALLES ---
-    st.divider()
-    col_a, col_b = st.columns(2)
-    
-    with col_a:
-        st.write("**Bonus by Account**")
-        st.dataframe(df_bonus.groupby("Account")["Amount"].sum(), use_container_width=True)
-        st.write("**OT by Multiplier (Var)**")
-        st.dataframe(df_ot.groupby("Var")["Total OT"].sum(), use_container_width=True)
+    try:
+        # 1. Cargar hoja específica
+        df_dp = pd.read_excel(archivo_subido, sheet_name="Double Pay")
         
-    with col_b:
-        st.write("**Double Pay by Account**")
-        st.dataframe(df_dp.groupby("Account")["Total DP"].sum(), use_container_width=True)
-        st.write("**Bonus by Type**")
-        st.dataframe(df_bonus.groupby("Bonus")["Amount"].sum(), use_container_width=True)
+        # 2. Validación de columnas
+        cols_requeridas = ["Account", "Agent", "Hours", "Rate"]
+        if not all(col in df_dp.columns for col in cols_requeridas):
+            st.error(f"Missing columns. Please ensure your 'Double Pay' sheet has: {', '.join(cols_requeridas)}")
+            return
+            
+        # 3. Limpieza y Cálculos
+        df_dp["Hours"] = pd.to_numeric(df_dp["Hours"], errors='coerce').fillna(0)
+        df_dp["Rate"] = pd.to_numeric(df_dp["Rate"], errors='coerce').fillna(0)
+        df_dp["Total Pay"] = df_dp["Hours"] * df_dp["Rate"]
+        
+        # 4. KPIs
+        total_pagado = df_dp["Total Pay"].sum()
+        total_horas = df_dp["Hours"].sum()
+        
+        c1, c2 = st.columns(2)
+        c1.metric("Total General to Pay", f"${total_pagado:,.2f}")
+        c2.metric("Total Hours Paid", f"{total_horas:,.2f} hrs")
+        
+        st.divider()
+        
+        # 5. Visualización
+        col_a, col_b = st.columns(2)
+        
+        with col_a:
+            st.subheader("Total Pay by Account")
+            df_acc = df_dp.groupby("Account", as_index=False)["Total Pay"].sum()
+            fig_acc = px.bar(df_acc, x="Account", y="Total Pay", color="Account", title="Payment by Account")
+            st.plotly_chart(fig_acc, use_container_width=True)
+            
+        with col_b:
+            st.subheader("Details by Agent")
+            df_agent = df_dp.groupby("Agent", as_index=False).agg({"Hours": "sum", "Total Pay": "sum"})
+            df_agent = df_agent.rename(columns={"Hours": "Total Hours", "Total Pay": "Total Amount ($)"})
+            st.dataframe(df_agent, use_container_width=True, hide_index=True)
+            
+        # 6. Descarga
+        st.divider()
+        st.subheader("📥 Export Double Pay Results")
+        
+        def generar_excel():
+            output = BytesIO()
+            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                df_acc.to_excel(writer, index=False, sheet_name='Total by Account')
+                df_agent.to_excel(writer, index=False, sheet_name='Total by Agent')
+                df_dp.to_excel(writer, index=False, sheet_name='Raw Data')
+            return output.getvalue()
+            
+        st.download_button(
+            label="Download Double Pay Results (Excel)",
+            data=generar_excel(),
+            file_name="Double_Pay_Report.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        
+    except Exception as e:
+        st.error(f"Error processing 'Double Pay' sheet: {e}")
