@@ -104,18 +104,18 @@ def mostrar_dashboard_ot(archivo_subido):
             "Total Pay": "sum"
         }).rename(columns={"Hours": "Total Hours Worked"})
         
-        # 2. Pivot Table para dividir el pago por cada variable "Var"
+        # 2. Pivot Table para dividir la CANTIDAD DE HORAS por cada variable "Var"
         df_agent_vars = pd.pivot_table(
             df_ot,
-            values='Total Pay',
+            values='Hours', # <--- Aquí indicamos que traiga las horas en lugar del monto
             index='Agent',
             columns='Var',
             aggfunc='sum',
             fill_value=0
         ).reset_index()
         
-        # Renombrar las nuevas columnas para que tengan sentido (Ej: "Pay (Var 1.5x)")
-        var_columns = {col: f"Pay (Var {col}x)" for col in df_agent_vars.columns if col != "Agent"}
+        # Renombrar las nuevas columnas para que reflejen que son horas (Ej: "Hours (Var 1.5x)")
+        var_columns = {col: f"Hours (Var {col}x)" for col in df_agent_vars.columns if col != "Agent"}
         df_agent_vars = df_agent_vars.rename(columns=var_columns)
         
         # 3. Unir la base con las nuevas columnas dinámicas
@@ -134,7 +134,7 @@ def mostrar_dashboard_ot(archivo_subido):
                 df_variables.to_excel(writer, index=False, sheet_name='Total by Var')
                 df_crudo.to_excel(writer, index=False, sheet_name='Calculated Details')
                 
-                # Ajuste de ancho de columnas (aumentado a 15 para cubrir las nuevas columnas dinámicas de Var)
+                # Ajuste de ancho de columnas
                 for sheet_name in ['Total by Agent', 'Total by Date', 'Total by Var', 'Calculated Details']:
                     worksheet = writer.sheets[sheet_name]
                     worksheet.set_column(0, 15, 20)
