@@ -17,9 +17,17 @@ st.set_page_config(page_title="Dashboard Analítico", layout="wide")
 # 1. BARRA LATERAL - MENÚ DE NAVEGACIÓN
 # ==========================================
 st.sidebar.title("Navegación")
+# Asegúrate de que esta lista tenga todos los nombres que usas en los elif
 menu_opcion = st.sidebar.radio(
     "Select Module:",
-    ["Dashboard Principal", "Master Dashboard", "Dashboard de Bonos", "Dashboard de OT", "Dashboard de Double Pay"]
+    [
+        "Dashboard Principal", 
+        "Master Dashboard", 
+        "Dashboard de Bonos", 
+        "Dashboard de Horas Extra (OT)", 
+        "Dashboard de Double Pay", 
+        "Generate Master Report"
+    ]
 )
 
 # ==========================================
