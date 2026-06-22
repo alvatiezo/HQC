@@ -33,7 +33,7 @@ menu_opcion = st.sidebar.radio(
 # ==========================================
 # 2. ENCABEZADO Y SUBIDA DE ARCHIVO
 # ==========================================
-st.title("Herramienta de Datos HQC")
+st.title("Upworks payment dashboard")
 st.write("Sube tu base de datos para visualizar las métricas y descargar informes especificos.")
 
 # Único uploader para todas las pantallas
