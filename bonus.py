@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+from io import BytesIO
 
 def mostrar_dashboard_bonus(archivo_subido):
     st.header("🏆 Dashboard de Bonos Aprobados")
@@ -11,10 +12,7 @@ def mostrar_dashboard_bonus(archivo_subido):
         
         # 2. Limpieza y Filtro de la columna "Status"
         if "Status" in df_bonus.columns:
-            # Aseguramos que no haya errores si hay celdas vacías y estandarizamos texto
             df_bonus["Status"] = df_bonus["Status"].astype(str).str.strip().str.lower()
-            
-            # FILTRAR: Solo mantener los que dicen "yes" (ignorando "no" o vacíos)
             df_filtrado = df_bonus[df_bonus["Status"] == "yes"].copy()
         else:
             st.error("No se encontró la columna 'Status' en la hoja 'Bonus'.")
@@ -33,52 +31,74 @@ def mostrar_dashboard_bonus(archivo_subido):
         # 4. Gráficos y Divisiones
         col1, col2 = st.columns(2)
         
-        # Gráfico 1: Sumatoria por Cuenta dividida por Fecha
         with col1:
             st.subheader("Pagos por Cuenta y Fecha")
-            # Agrupamos por Account y Date, sumando el Amount
             df_acc_date = df_filtrado.groupby(["Account", "Date"], as_index=False)["Amount"].sum()
-            
             fig_acc_date = px.bar(
-                df_acc_date, 
-                x="Date", 
-                y="Amount", 
-                color="Account", 
-                barmode="group",
-                title="Monto Total por Fecha (Agrupado por Cuenta)",
-                text_auto='.2s'
+                df_acc_date, x="Date", y="Amount", color="Account", barmode="group",
+                title="Monto Total por Fecha (Agrupado por Cuenta)", text_auto='.2s'
             )
             st.plotly_chart(fig_acc_date, use_container_width=True)
             
-        # Gráfico 2: Sumatoria por Tipo de Bono
         with col2:
             st.subheader("Distribución por Tipo de Bono")
-            # Agrupamos por Bonus, sumando el Amount
             df_bonus_type = df_filtrado.groupby("Bonus", as_index=False)["Amount"].sum()
-            
             fig_bonus = px.pie(
-                df_bonus_type, 
-                names="Bonus", 
-                values="Amount", 
-                title="Participación de cada Bono en el Total",
-                hole=0.4
+                df_bonus_type, names="Bonus", values="Amount", 
+                title="Participación de cada Bono en el Total", hole=0.4
             )
             st.plotly_chart(fig_bonus, use_container_width=True)
             
         st.divider()
         
-        # 5. Tabla de datos procesados (Opcional, para revisar la info calculada)
-        st.subheader("Desglose Final de Cuentas")
-        # Mostramos una tabla pivote limpia para que se vea exactamente cuánto se le paga a cada cuenta por fecha
-        tabla_resumen = pd.pivot_table(
+        # ==========================================
+        # 5. PREPARACIÓN DE DATOS PARA DESCARGA
+        # ==========================================
+        st.subheader("📥 Exportar Resultados")
+        st.write("Descarga un archivo Excel con los totales netos consolidados por cuenta y el desglose de los bonos.")
+        
+        # Tabla 1: Total general por cuenta
+        df_total_cuenta = df_filtrado.groupby("Account", as_index=False)["Amount"].sum()
+        df_total_cuenta.rename(columns={"Amount": "Total a Pagar ($)"}, inplace=True)
+        
+        # Tabla 2: Desglose de cuenta por bono (Pivot Table)
+        df_cuenta_bono = pd.pivot_table(
             df_filtrado, 
             values='Amount', 
-            index=['Account', 'Date'], 
-            columns=['Bonus'], 
+            index='Account', 
+            columns='Bonus', 
             aggfunc='sum', 
             fill_value=0
+        ).reset_index()
+
+        # Mostrar una vista previa en la pantalla
+        st.dataframe(df_total_cuenta, use_container_width=True)
+
+        # Función para compilar ambas tablas en un solo archivo Excel
+        def generar_excel_resultados(df_totales, df_bonos):
+            output = BytesIO()
+            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                # Guardar en diferentes hojas
+                df_totales.to_excel(writer, index=False, sheet_name='Total por Cuenta')
+                df_bonos.to_excel(writer, index=False, sheet_name='Desglose por Bono')
+                
+                # Formato visual básico para el archivo descargado
+                for sheet_name in ['Total por Cuenta', 'Desglose por Bono']:
+                    worksheet = writer.sheets[sheet_name]
+                    worksheet.set_column(0, 0, 20) # Ancho columna Account
+                    worksheet.set_column(1, 10, 15) # Ancho columnas de montos
+                    
+            return output.getvalue()
+            
+        excel_resultados = generar_excel_resultados(df_total_cuenta, df_cuenta_bono)
+        
+        # Botón de descarga
+        st.download_button(
+            label="Descargar Resultados (Excel)",
+            data=excel_resultados,
+            file_name="Resultados_Consolidados_Bonos.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
-        st.dataframe(tabla_resumen, use_container_width=True)
         
     except ValueError:
         st.error("⚠️ El archivo subido no contiene una pestaña llamada 'Bonus'. Verifica tu Excel.")
