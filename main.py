@@ -1,112 +1,72 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from io import BytesIO
 
-# Configuración de la página
-st.set_page_config(page_title="Dashboard Analítico", layout="wide")
-
-st.title("📊 Panel de Control y Reportes Automáticos")
-st.write("Sube tu base de datos para visualizar las métricas y descargar informes personalizados.")
-
-# 1. ZONA DE SUBIDA DE ARCHIVO
-archivo_subido = st.file_uploader("📥 Arrastra o sube tu archivo Excel (.xlsx)", type=["xlsx"])
-
-if archivo_subido is not None:
+def mostrar_dashboard_bonus(archivo_subido):
+    st.header("🏆 Dashboard de Bonos Aprobados")
+    
     try:
-        # Leer el archivo Excel a un DataFrame de Pandas
-        df = pd.read_excel(archivo_subido)
+        # 1. Leer específicamente la hoja "Bonus" del Excel
+        df_bonus = pd.read_excel(archivo_subido, sheet_name="Bonus")
         
-        # 2. BARRA LATERAL (FILTROS)
-        st.sidebar.header("Filtros Interactivos")
-        
-        # Filtros dinámicos (verifica si las columnas existen en el Excel subido)
-        if "Región" in df.columns:
-            regiones_seleccionadas = st.sidebar.multiselect(
-                "Filtrar por Región:", 
-                options=df["Región"].unique(), 
-                default=df["Región"].unique()
-            )
-            df = df[df["Región"].isin(regiones_seleccionadas)]
+        # 2. Limpieza y Filtro de la columna "Status"
+        if "Status" in df_bonus.columns:
+            # Aseguramos que no haya errores si hay celdas vacías y estandarizamos texto
+            df_bonus["Status"] = df_bonus["Status"].astype(str).str.strip().str.lower()
             
-        if "Vendedor" in df.columns:
-            vendedores_seleccionados = st.sidebar.multiselect(
-                "Filtrar por Vendedor:", 
-                options=df["Vendedor"].unique(), 
-                default=df["Vendedor"].unique()
-            )
-            df = df[df["Vendedor"].isin(vendedores_seleccionados)]
+            # FILTRAR: Solo mantener los que dicen "yes" (ignorando "no" o vacíos)
+            df_filtrado = df_bonus[df_bonus["Status"] == "yes"].copy()
+        else:
+            st.error("No se encontró la columna 'Status' en la hoja 'Bonus'.")
+            return
 
-        # 3. ZONA DE DASHBOARD Y KPIs
-        st.subheader("Resumen de Rendimiento")
-        col1, col2, col3 = st.columns(3)
+        if df_filtrado.empty:
+            st.warning("No hay datos con Status 'Yes' para mostrar.")
+            return
+
+        # 3. KPIs Generales
+        total_monto = df_filtrado["Amount"].sum()
+        st.metric("Total a Pagar (Bonos Aprobados)", f"${total_monto:,.2f}")
         
+        st.divider()
+        
+        # 4. Gráficos y Divisiones
+        col1, col2 = st.columns(2)
+        
+        # Gráfico 1: Sumatoria por Cuenta dividida por Fecha
         with col1:
-            st.metric("Total de Registros (Filas)", len(df))
+            st.subheader("Pagos por Cuenta y Fecha")
+            # Agrupamos por Account y Date, sumando el Amount
+            df_acc_date = df_filtrado.groupby(["Account", "Date"], as_index=False)["Amount"].sum()
             
+            fig_acc_date = px.bar(
+                df_acc_date, 
+                x="Date", 
+                y="Amount", 
+                color="Account", 
+                barmode="group",
+                title="Monto Total por Fecha (Agrupado por Cuenta)",
+                text_auto='.2s'
+            )
+            st.plotly_chart(fig_acc_date, use_container_width=True)
+            
+        # Gráfico 2: Sumatoria por Tipo de Bono
         with col2:
-            if "Venta Total" in df.columns:
-                total_ventas = df['Venta Total'].sum()
-                st.metric("Ingresos Totales", f"${total_ventas:,.2f}")
-                
-        with col3:
-             if "Cantidad" in df.columns:
-                total_cantidad = df['Cantidad'].sum()
-                st.metric("Unidades Procesadas", f"{total_cantidad}")
-
-        st.divider()
-
-        # Gráficos Interactivos
-        col_graf1, col_graf2 = st.columns(2)
-        
-        with col_graf1:
-            if "Región" in df.columns and "Venta Total" in df.columns:
-                # Agrupamos los datos para el gráfico
-                df_region = df.groupby("Región", as_index=False)["Venta Total"].sum()
-                fig_region = px.bar(df_region, x="Región", y="Venta Total", title="Ventas Acumuladas por Región", color="Región")
-                st.plotly_chart(fig_region, use_container_width=True)
-                
-        with col_graf2:
-            if "Vendedor" in df.columns and "Venta Total" in df.columns:
-                df_vendedor = df.groupby("Vendedor", as_index=False)["Venta Total"].sum()
-                fig_vendedor = px.pie(df_vendedor, names="Vendedor", values="Venta Total", title="Participación por Vendedor")
-                st.plotly_chart(fig_vendedor, use_container_width=True)
-
-        st.divider()
-
-        # Mostrar tabla de datos filtrados
-        st.subheader("Base de Datos (Filtrada)")
-        st.dataframe(df, use_container_width=True)
-
-        # 4. BOTÓN DE DESCARGA DE EXCEL
-        st.subheader("📥 Exportar Informe")
-        st.write("Descarga los datos que estás viendo en pantalla como un nuevo archivo Excel.")
-        
-        # Función para convertir el DataFrame a un archivo Excel en memoria
-        def convertir_df_a_excel(dataframe):
-            output = BytesIO()
-            # xlsxwriter permite guardar el excel de forma estructurada y rápida
-            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                dataframe.to_excel(writer, index=False, sheet_name='Reporte Filtrado')
-                # Opcional: Autoajustar el ancho de las columnas
-                worksheet = writer.sheets['Reporte Filtrado']
-                for i, col in enumerate(dataframe.columns):
-                    ancho_columna = max(dataframe[col].astype(str).map(len).max(), len(col)) + 2
-                    worksheet.set_column(i, i, ancho_columna)
-            processed_data = output.getvalue()
-            return processed_data
+            st.subheader("Distribución por Tipo de Bono")
+            # Agrupamos por Bonus, sumando el Amount
+            df_bonus_type = df_filtrado.groupby("Bonus", as_index=False)["Amount"].sum()
             
-        excel_generado = convertir_df_a_excel(df)
+            fig_bonus = px.pie(
+                df_bonus_type, 
+                names="Bonus", 
+                values="Amount", 
+                title="Participación de cada Bono en el Total",
+                hole=0.4
+            )
+            st.plotly_chart(fig_bonus, use_container_width=True)
+            
+        st.divider()
         
-        # Botón nativo de Streamlit para descargar
-        st.download_button(
-            label="Descargar Excel Filtrado",
-            data=excel_generado,
-            file_name="Reporte_Dashboard.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-
-    except Exception as e:
-        st.error(f"Hubo un error al procesar el archivo. Asegúrate de que sea un Excel válido. Error: {e}")
-else:
-    st.info("👆 Por favor, sube un archivo Excel en el recuadro superior para comenzar.")
+        # 5. Tabla de datos procesados (Opcional, para revisar la info calculada)
+        st.subheader("Desglose Final de Cuentas")
+        #
