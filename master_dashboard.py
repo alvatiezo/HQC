@@ -68,7 +68,7 @@ def mostrar_master_dashboard(archivo):
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
                 # Resumen Ejecutivo
                 summary = pd.DataFrame({
-                    "Metric": ["Total Bonus", "Total OT Pay", "Total OT Hours", "Total DP Pay", "Total DP Hours"],
+                    "Metric": ["Total Bonus", "Total OT Paid", "Total OT Hours", "Total DP Paid", "Total DP Hours"],
                     "Value": [tot_bonus, tot_ot_pay, tot_ot_hours, tot_dp_pay, tot_dp_hours]
                 })
                 summary.to_excel(writer, index=False, sheet_name='Executive Summary')
