@@ -69,4 +69,18 @@ def mostrar_dashboard_bonus(archivo_subido):
         
         # 5. Tabla de datos procesados (Opcional, para revisar la info calculada)
         st.subheader("Desglose Final de Cuentas")
-        #
+        # Mostramos una tabla pivote limpia para que se vea exactamente cuánto se le paga a cada cuenta por fecha
+        tabla_resumen = pd.pivot_table(
+            df_filtrado, 
+            values='Amount', 
+            index=['Account', 'Date'], 
+            columns=['Bonus'], 
+            aggfunc='sum', 
+            fill_value=0
+        )
+        st.dataframe(tabla_resumen, use_container_width=True)
+        
+    except ValueError:
+        st.error("⚠️ El archivo subido no contiene una pestaña llamada 'Bonus'. Verifica tu Excel.")
+    except Exception as e:
+        st.error(f"Ocurrió un error inesperado al procesar la información: {e}")
