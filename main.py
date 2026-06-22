@@ -7,7 +7,7 @@ from io import BytesIO
 import bonus 
 
 # Configuración principal de la página
-st.set_page_config(page_title="Dashboard Analítico", layout="wide")
+st.set_page_config(page_title="Dashboard HQC", layout="wide")
 
 # ==========================================
 # 1. BARRA LATERAL - MENÚ DE NAVEGACIÓN
