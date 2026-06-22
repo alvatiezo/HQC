@@ -82,9 +82,11 @@ def mostrar_dashboard_doublepay(archivo_subido):
         st.write("Download the consolidated summaries.")
         
         # DataFrames para las pestañas del Excel
+        # NUEVO: Ahora agrupa por Account sumando tanto Hours como Total Pay
         df_excel_account = df_dp.groupby("Account", as_index=False).agg({
+            "Hours": "sum",
             "Total Pay": "sum"
-        }).rename(columns={"Total Pay": "Total Amount Paid"})
+        }).rename(columns={"Hours": "Total Hours", "Total Pay": "Total Amount Paid"})
         
         df_excel_agent = df_dp.groupby("Agent", as_index=False).agg({
             "Hours": "sum", 
