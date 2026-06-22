@@ -99,7 +99,7 @@ def mostrar_dashboard_ot(archivo_subido):
         st.write("Descarga los resúmenes consolidados listos para procesar los pagos.")
         
         # DataFrames resumidos que irán en el Excel
-        df_excel_agent = df_ot.groupby("Agent", as_index=False).agg({"Hours": "sum", "Total a Pagar": "sum"}).rename(columns={"Hours": "Total Horas Trabajadas"})
+        df_excel_agent = df_ot.groupby("Agent", as_index=False).agg({"Hours": "sum", "Total a Pagar": "sum"}).rename(columns={"Hours": "Hours"})
         df_excel_date = df_ot.groupby("Date", as_index=False).agg({"Hours": "sum", "Total a Pagar": "sum"}).rename(columns={"Hours": "Total Horas Aprobadas"})
         df_excel_var = df_var.rename(columns={"Hours": "Total Horas", "Total a Pagar": "Monto Total Pagado"})
         
