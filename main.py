@@ -8,6 +8,7 @@ import bonus
 import ot
 import doublepay
 import report_generator
+import master_dashboard
 
 # Configuración principal de la página
 st.set_page_config(page_title="Dashboard Analítico", layout="wide")
@@ -17,8 +18,8 @@ st.set_page_config(page_title="Dashboard Analítico", layout="wide")
 # ==========================================
 st.sidebar.title("Navegación")
 menu_opcion = st.sidebar.radio(
-    "Selecciona el módulo a visualizar:",
-    ["Dashboard Principal", "Dashboard de Bonos", "Dashboard de Horas Extra (OT)", "Dashboard de Double Pay", "Generate Master Report"]
+    "Select Module:",
+    ["Dashboard Principal", "Master Dashboard", "Dashboard de Bonos", "Dashboard de OT", "Dashboard de Double Pay"]
 )
 
 # ==========================================
@@ -112,6 +113,8 @@ if archivo_subido is not None:
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
                 st.success("Report ready for download!")
+    elif menu_opcion == "Master Dashboard":
+        master_dashboard.mostrar_master_dashboard(archivo_subido)
 
 else:
     st.info("👆 Por favor, sube un archivo Excel en el recuadro superior para comenzar.")
