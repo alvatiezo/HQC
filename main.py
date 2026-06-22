@@ -17,7 +17,7 @@ st.set_page_config(page_title="Dashboard Analítico", layout="wide")
 st.sidebar.title("Navegación")
 menu_opcion = st.sidebar.radio(
     "Selecciona el módulo a visualizar:",
-    ["Dashboard Principal", "Dashboard de Bonos", "Dashboard de Horas Extra (OT)"]
+    ["Dashboard Principal", "Dashboard de Bonos", "Dashboard de Horas Extra (OT)", "Dashboard de Double Pay"]
 )
 
 # ==========================================
