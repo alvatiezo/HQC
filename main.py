@@ -7,6 +7,7 @@ from io import BytesIO
 import bonus 
 import ot
 import doublepay
+import report_generator
 
 # Configuración principal de la página
 st.set_page_config(page_title="Dashboard Analítico", layout="wide")
@@ -17,7 +18,7 @@ st.set_page_config(page_title="Dashboard Analítico", layout="wide")
 st.sidebar.title("Navegación")
 menu_opcion = st.sidebar.radio(
     "Selecciona el módulo a visualizar:",
-    ["Dashboard Principal", "Dashboard de Bonos", "Dashboard de Horas Extra (OT)", "Dashboard de Double Pay"]
+    ["Dashboard Principal", "Dashboard de Bonos", "Dashboard de Horas Extra (OT)", "Dashboard de Double Pay", "Generate Master Report"]
 )
 
 # ==========================================
@@ -98,6 +99,19 @@ if archivo_subido is not None:
     # --- RUTA 4: Double Pay ---
     elif menu_opcion == "Dashboard de Double Pay":
         doublepay.mostrar_dashboard_doublepay(archivo_subido)
+    # ... (dentro de los bloques IF/ELIF)
+    elif menu_opcion == "Generate Master Report":
+        st.subheader("📊 Generate Master Excel Report")
+        if st.button("Compile All Data & Download"):
+            with st.spinner("Compiling report..."):
+                master_data = report_generator.generar_reporte_compilado(archivo_subido)
+                st.download_button(
+                    label="Download Compiled Report",
+                    data=master_data,
+                    file_name="Master_Report_Consolidated.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+                st.success("Report ready for download!")
 
 else:
     st.info("👆 Por favor, sube un archivo Excel en el recuadro superior para comenzar.")
