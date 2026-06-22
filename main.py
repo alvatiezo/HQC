@@ -114,7 +114,10 @@ if archivo_subido is not None:
                 )
                 st.success("Report ready for download!")
     elif menu_opcion == "Master Dashboard":
-        master_dashboard.mostrar_master_dashboard(archivo_subido)
-
+        # Asegúrate de tener archivo_subido capturado del st.file_uploader
+        if archivo_subido is not None:
+            master_dashboard.mostrar_master_dashboard(archivo_subido)
+        else:
+            st.warning("Por favor, sube un archivo Excel primero.")
 else:
     st.info("👆 Por favor, sube un archivo Excel en el recuadro superior para comenzar.")
