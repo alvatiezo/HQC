@@ -98,31 +98,53 @@ def mostrar_dashboard_ot(archivo_subido):
         st.subheader("📥 Export OT Results")
         st.write("Download the consolidated summaries ready for payment processing.")
         
-        # DataFrames resumidos que irán en el Excel (columnas en inglés)
-        df_excel_agent = df_ot.groupby("Agent", as_index=False).agg({"Hours": "sum", "Total Pay": "sum"}).rename(columns={"Hours": "Total Hours Worked"})
+        # 1. Base Agent Totals (Horas y Pago Total)
+        df_excel_agent_base = df_ot.groupby("Agent", as_index=False).agg({
+            "Hours": "sum", 
+            "Total Pay": "sum"
+        }).rename(columns={"Hours": "Total Hours Worked"})
+        
+        # 2. Pivot Table para dividir el pago por cada variable "Var"
+        df_agent_vars = pd.pivot_table(
+            df_ot,
+            values='Total Pay',
+            index='Agent',
+            columns='Var',
+            aggfunc='sum',
+            fill_value=0
+        ).reset_index()
+        
+        # Renombrar las nuevas columnas para que tengan sentido (Ej: "Pay (Var 1.5x)")
+        var_columns = {col: f"Pay (Var {col}x)" for col in df_agent_vars.columns if col != "Agent"}
+        df_agent_vars = df_agent_vars.rename(columns=var_columns)
+        
+        # 3. Unir la base con las nuevas columnas dinámicas
+        df_excel_agent = pd.merge(df_excel_agent_base, df_agent_vars, on="Agent", how="left")
+        
+        # Resto de los DataFrames
         df_excel_date = df_ot.groupby("Date", as_index=False).agg({"Hours": "sum", "Total Pay": "sum"}).rename(columns={"Hours": "Total Approved Hours"})
         df_excel_var = df_var.rename(columns={"Hours": "Total Hours", "Total Pay": "Total Amount Paid"})
         
         def generar_excel_ot(df_agentes, df_fechas, df_variables, df_crudo):
             output = BytesIO()
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                # Guardar en diferentes pestañas con nombres en inglés
+                # Guardar en diferentes pestañas
                 df_agentes.to_excel(writer, index=False, sheet_name='Total by Agent')
                 df_fechas.to_excel(writer, index=False, sheet_name='Total by Date')
                 df_variables.to_excel(writer, index=False, sheet_name='Total by Var')
                 df_crudo.to_excel(writer, index=False, sheet_name='Calculated Details')
                 
-                # Ajuste de ancho de columnas
+                # Ajuste de ancho de columnas (aumentado a 15 para cubrir las nuevas columnas dinámicas de Var)
                 for sheet_name in ['Total by Agent', 'Total by Date', 'Total by Var', 'Calculated Details']:
                     worksheet = writer.sheets[sheet_name]
-                    worksheet.set_column(0, 5, 20)
+                    worksheet.set_column(0, 15, 20)
                     
             return output.getvalue()
             
-        # Generar el archivo pasándole la nueva tabla de variables
+        # Generar el archivo pasándole las tablas procesadas
         excel_resultados_ot = generar_excel_ot(df_excel_agent, df_excel_date, df_excel_var, df_ot)
         
-        # Botón de descarga traducido
+        # Botón de descarga
         st.download_button(
             label="Download OT Results (Excel)",
             data=excel_resultados_ot,
