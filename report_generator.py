@@ -28,6 +28,9 @@ def generar_reporte_compilado(archivo):
                 worksheet.set_column(col_num, col_num, 18)
         except:
             continue
+
+    summary_ws = workbook.add_worksheet('Executive Summary')
+    summary_ws.write(0, 0, "MASTER SUMMARY REPORT", header_format)
             
     writer.close()
     return output.getvalue()
