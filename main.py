@@ -6,6 +6,7 @@ from io import BytesIO
 # Importamos los módulos secundarios
 import bonus 
 import ot
+import doublepay
 
 # Configuración principal de la página
 st.set_page_config(page_title="Dashboard Analítico", layout="wide")
@@ -94,6 +95,9 @@ if archivo_subido is not None:
     # --- RUTA 3: DASHBOARD DE HORAS EXTRA (OT) ---
     elif menu_opcion == "Dashboard de Horas Extra (OT)":
         ot.mostrar_dashboard_ot(archivo_subido)
+    # --- RUTA 4: Double Pay ---
+    elif menu_opcion == "Dashboard de Double Pay":
+        doublepay.mostrar_dashboard_doublepay(archivo_subido)
 
 else:
     st.info("👆 Por favor, sube un archivo Excel en el recuadro superior para comenzar.")
